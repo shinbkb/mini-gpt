@@ -1,0 +1,19 @@
+# Target settings from the plan; MoE implementation starts at M4.
+seed: 42
+model:
+  type: moe
+  n_layers: 6
+  d_model: 384
+  n_heads: 6
+  head_dim: 64
+  d_ff: 1536
+  vocab_size: 8000
+  block_size: 512
+  dropout: 0.1
+  n_experts: 4
+  top_k: 2
+training:
+  optimizer: AdamW
+  learning_rate: 0.0003
+  batch_size: 8
+  precision: fp16  # GPU target; CPU smoke tests use float32.

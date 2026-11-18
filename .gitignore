@@ -1,4 +1,5 @@
 .venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -10,9 +11,15 @@ dist/
 !.env.example
 .ipynb_checkpoints/
 .cache/
-artifacts/*
-!artifacts/.gitkeep
-data/
+/artifacts/*
+!/artifacts/.gitkeep
+/data/
+/datasets/
+/cache/
+/checkpoints/
+/outputs/
+/runs/
+wandb/
 *.pt
 *.pth
 *.ckpt
@@ -23,5 +30,4 @@ data/
 *.arrow
 *.zip
 *.tar.gz
-wandb/
-outputs/
+*.log

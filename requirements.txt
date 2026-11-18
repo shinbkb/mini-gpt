@@ -1,0 +1,4 @@
+# M0 only. Install the appropriate CPU/CUDA torch build first.
+torch>=2.6,<3
+pytest>=8,<10
+PyYAML>=6,<7
