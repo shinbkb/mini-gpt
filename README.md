@@ -59,3 +59,34 @@ bỏ qua mã nguồn `src/data/`.
 
 Import `src`, chạy smoke test CPU và báo cáo môi trường. Không tải TinyStories,
 không huấn luyện tokenizer/model. Chờ duyệt M0 trước khi triển khai M1.
+
+## M1 — TinyStories và byte-level BPE
+
+M1 thêm `ByteLevelBPE`, reader TinyStories, `CausalLMDataset`, CLI chuẩn bị dữ
+liệu, tests và notebook `01_tokenizer.ipynb`. Chưa có model/training cho M2 trở đi.
+
+Cài requirements trong virtualenv (PyTorch CPU/CUDA cài theo máy):
+
+```bash
+python -m pip install -r requirements.txt
+python -m pytest -q
+```
+
+Chuẩn bị dữ liệu online trên máy có Internet:
+
+```bash
+python -m src.data.prepare \
+  --train-limit 20000 --validation-limit 1000 \
+  --vocab-size 8000 --block-size 512 --require-full-vocab \
+  --revision DATASET_COMMIT_SHA --output-dir artifacts
+```
+
+Tokenizer chỉ học từ train. Validation được encode riêng. Dùng hai file local
+`--train-file train.jsonl --validation-file validation.jsonl` khi offline;
+JSONL cần trường `text`, TXT phân tách truyện bằng dòng `<|endoftext|>`.
+Không truyền cùng một file làm cả hai split. Output artifacts bị Git bỏ qua.
+Corpus nhỏ có thể không tạo đủ 8.000 token; `--require-full-vocab` sẽ báo lỗi.
+
+`notebooks/01_tokenizer.ipynb` clone và checkout commit đầy đủ, chạy tests rồi gọi
+CLI từ `src`. Sau khi push code M1, điền `COMMIT_SHA`; để tái lập dữ liệu online,
+điền `DATASET_REVISION`. Notebook không chứa lại thuật toán tokenizer.

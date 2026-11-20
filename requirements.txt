@@ -1,4 +1,5 @@
-# M0 only. Install the appropriate CPU/CUDA torch build first.
+# Install the matching CPU/CUDA PyTorch build before this file if needed.
 torch>=2.6,<3
+datasets>=3,<6
 pytest>=8,<10
 PyYAML>=6,<7
