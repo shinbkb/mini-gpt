@@ -1,20 +1,19 @@
 # MiniGPT-Sys
 
 Dự án xây dựng Decoder-Only Transformer từ đầu bằng PyTorch.
-Hiện chỉ triển khai **M0 — khởi tạo repository và môi trường**.
+Hiện đã triển khai M0, M1 và M2: môi trường, BPE/TinyStories và Dense GPT baseline.
 Kế hoạch: [IMPLEMENTATION_PLAN_VI.md](IMPLEMENTATION_PLAN_VI.md).
 
 ## Cấu trúc
 
 - `configs/`: cấu hình mục tiêu Dense và MoE.
-- `src/`: package, module kiểm tra môi trường và các file khung theo kế hoạch.
-- `tests/`: smoke test CPU; test tokenizer/dataset còn là file khung.
-- `notebooks/00_setup.ipynb`: mẫu thiết lập Kaggle, khóa commit nguồn.
-- `notebooks/01_tokenizer.ipynb` đến `main_pipeline.ipynb`: notebook khung.
+- `src/`: tokenizer BPE, TinyStories Dataset, Dense GPT, trainer và generation.
+- `tests/`: CPU smoke, BPE, dữ liệu, model, causal mask, overfit và checkpoint.
+- `notebooks/00_setup.ipynb` và `01_tokenizer.ipynb`: M0/M1 Kaggle.
+- `notebooks/02_dense_gpt.ipynb`: huấn luyện/generate Dense GPT trên Kaggle.
 - `experiments/`, `reports/`, `artifacts/`: thí nghiệm, báo cáo, output.
 
-Tokenizer, Dataset, model, train/evaluate và benchmark chưa triển khai.
-Hai YAML là cấu hình mục tiêu cho milestone sau, chưa được dùng để train.
+KV cache, MoE, long-context, INT8 và benchmark chưa triển khai. M3 trở đi còn để khung.
 
 ## Ubuntu — cài đặt và kiểm tra CPU
 
@@ -55,11 +54,6 @@ Lưu output dưới `/kaggle/working/` và lưu Notebook Output/download trướ
 thúc phiên. `.gitignore` bỏ qua secrets, dữ liệu, cache và checkpoints; không
 bỏ qua mã nguồn `src/data/`.
 
-## Phạm vi nghiệm thu M0
-
-Import `src`, chạy smoke test CPU và báo cáo môi trường. Không tải TinyStories,
-không huấn luyện tokenizer/model. Chờ duyệt M0 trước khi triển khai M1.
-
 ## M1 — TinyStories và byte-level BPE
 
 M1 thêm `ByteLevelBPE`, reader TinyStories, `CausalLMDataset`, CLI chuẩn bị dữ
@@ -90,3 +84,26 @@ Corpus nhỏ có thể không tạo đủ 8.000 token; `--require-full-vocab` s�
 `notebooks/01_tokenizer.ipynb` clone và checkout commit đầy đủ, chạy tests rồi gọi
 CLI từ `src`. Sau khi push code M1, điền `COMMIT_SHA`; để tái lập dữ liệu online,
 điền `DATASET_REVISION`. Notebook không chứa lại thuật toán tokenizer.
+
+
+## M2 — Dense GPT
+
+Bắt đầu bằng tiny config trên cache M1:
+
+```bash
+python train.py --config configs/tiny.yaml --max-steps 100 --device auto
+python -m src.inference.generate --checkpoint runs/tiny/best.pt \
+  --tokenizer artifacts/tokenizer.json --prompt "Once upon a time"
+python evaluate.py --checkpoint runs/tiny/best.pt --tokens artifacts/validation_tokens.pt
+```
+
+Trainer ghi validation loss/perplexity, tokens/s, peak VRAM và lưu `last.pt`,
+`best.pt`, `metrics.jsonl`. Resume bằng `--resume runs/tiny/last.pt`.
+`--overfit-batch` kiểm tra khả năng giảm loss trên một batch cố định.
+Mô hình proposal-scale dùng `configs/dense.yaml`; chạy sau khi xác nhận tiny config.
+
+Trên Kaggle: commit/push M2, điền hash vào `notebooks/02_dense_gpt.ipynb`,
+đính kèm M1 artifacts đã tải lên như Kaggle Dataset và đặt `M1_ARTIFACTS_INPUT`
+thành thư mục input. Chọn Internet để clone/cài dependencies; GPU tùy chọn.
+Notebook mặc định chạy tiny 100 steps, sau đó sinh mẫu văn bản. Dùng Save Version
+để lưu metrics và checkpoints.

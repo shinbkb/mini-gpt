@@ -1,0 +1,30 @@
+# Short CPU/GPU smoke and overfit config. Not a quality benchmark.
+seed: 42
+model:
+  type: dense
+  n_layers: 2
+  d_model: 128
+  n_heads: 4
+  head_dim: 32
+  d_ff: 512
+  vocab_size: 8000
+  block_size: 64
+  dropout: 0.0
+  tie_weights: true
+data:
+  train_tokens: artifacts/train_tokens.pt
+  validation_tokens: artifacts/validation_tokens.pt
+training:
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  warmup_steps: 5
+  min_lr_ratio: 0.1
+  batch_size: 4
+  gradient_accumulation_steps: 1
+  max_steps: 100
+  eval_interval: 10
+  eval_batches: 5
+  precision: fp32
+  output_dir: runs/tiny

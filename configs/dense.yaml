@@ -1,4 +1,4 @@
-# Target settings from the plan; model/training implementation starts at M2.
+# Proposal-scale Dense baseline. Begin with configs/tiny.yaml before this run.
 seed: 42
 model:
   type: dense
@@ -10,8 +10,24 @@ model:
   vocab_size: 8000
   block_size: 512
   dropout: 0.1
+  tie_weights: true
+data:
+  train_tokens: artifacts/train_tokens.pt
+  validation_tokens: artifacts/validation_tokens.pt
 training:
   optimizer: AdamW
   learning_rate: 0.0003
+  weight_decay: 0.1
+  gradient_clip: 1.0
+  warmup_steps: 100
+  min_lr_ratio: 0.1
   batch_size: 8
-  precision: fp16  # GPU target; CPU smoke tests use float32.
+  gradient_accumulation_steps: 1
+  max_steps: 1000
+  eval_interval: 100
+  eval_batches: 20
+  precision: fp16
+  max_steps: 1000
+  eval_interval: 100
+  eval_batches: 20
+  output_dir: runs/dense
