@@ -7,13 +7,13 @@ Kế hoạch: [IMPLEMENTATION_PLAN_VI.md](IMPLEMENTATION_PLAN_VI.md).
 ## Cấu trúc
 
 - `configs/`: cấu hình mục tiêu Dense và MoE.
-- `src/`: tokenizer BPE, TinyStories Dataset, Dense GPT, trainer và generation.
+- `src/`: tokenizer BPE, TinyStories Dataset, Dense GPT, trainer, KV cache và generation.
 - `tests/`: CPU smoke, BPE, dữ liệu, model, causal mask, overfit và checkpoint.
 - `notebooks/00_setup.ipynb` và `01_tokenizer.ipynb`: M0/M1 Kaggle.
 - `notebooks/02_dense_gpt.ipynb`: huấn luyện/generate Dense GPT trên Kaggle.
 - `experiments/`, `reports/`, `artifacts/`: thí nghiệm, báo cáo, output.
 
-KV cache, MoE, long-context, INT8 và benchmark chưa triển khai. M3 trở đi còn để khung.
+MoE, long-context và INT8 là các milestone tiếp theo. M3 bổ sung KV cache và benchmark decode.
 
 ## Ubuntu — cài đặt và kiểm tra CPU
 
@@ -95,6 +95,10 @@ python train.py --config configs/tiny.yaml --max-steps 100 --device auto
 python -m src.inference.generate --checkpoint runs/tiny/best.pt \
   --tokenizer artifacts/tokenizer.json --prompt "Once upon a time"
 python evaluate.py --checkpoint runs/tiny/best.pt --tokens artifacts/validation_tokens.pt
+
+# So sánh cache/no-cache. Context dài hơn block_size của checkpoint sẽ tự bỏ qua.
+python -m experiments.benchmark_kv --checkpoint runs/dense/best.pt \
+  --contexts 128 512 1024 2048 --precision fp16 --device auto
 ```
 
 Trainer ghi validation loss/perplexity, tokens/s, peak VRAM và lưu `last.pt`,

@@ -1,0 +1,82 @@
+{
+  "checkpoint": "runs/dense/best.pt",
+  "model_config": {
+    "vocab_size": 8000,
+    "block_size": 512,
+    "n_layers": 6,
+    "d_model": 384,
+    "n_heads": 6,
+    "d_ff": 1536,
+    "dropout": 0.1,
+    "tie_weights": true
+  },
+  "seed": 42,
+  "warmup": 1,
+  "repeats": 3,
+  "first_token_latency_definition": "prompt prefill plus first next-token prediction",
+  "next_token_latency_definition": "decode-loop duration per subsequent generated token, excluding prefill and first token",
+  "environment": {
+    "python": "3.14.4",
+    "platform": "Linux-7.0.0-1006-nvidia-x86_64-with-glibc2.43",
+    "libraries": {
+      "torch": "2.15.0+cpu",
+      "pytest": "9.2.0",
+      "PyYAML": "6.0.3"
+    },
+    "seed": 42,
+    "device": "cpu",
+    "cuda_available": false,
+    "cuda_build_version": null,
+    "gpu_devices": []
+  },
+  "results": [
+    {
+      "context_length": 128,
+      "precision": "fp32",
+      "device": "cpu",
+      "skipped_contexts": [
+        1024,
+        2048
+      ],
+      "cache": {
+        "first_token_latency_ms": 22.471400999620528,
+        "next_token_latency_ms": 7.019608999988642,
+        "tokens_per_second": 142.45807708116195,
+        "peak_vram_bytes": 0,
+        "generated_tokens": 8
+      },
+      "no_cache": {
+        "first_token_latency_ms": 25.49713899998096,
+        "next_token_latency_ms": 33.85855999996628,
+        "tokens_per_second": 29.534628761559734,
+        "peak_vram_bytes": 0,
+        "generated_tokens": 8
+      },
+      "speedup_tokens_per_second": 4.823425350332343
+    },
+    {
+      "context_length": 512,
+      "precision": "fp32",
+      "device": "cpu",
+      "skipped_contexts": [
+        1024,
+        2048
+      ],
+      "cache": {
+        "first_token_latency_ms": 80.51088000001982,
+        "next_token_latency_ms": 81.3957824285743,
+        "tokens_per_second": 12.28564884031321,
+        "peak_vram_bytes": 0,
+        "generated_tokens": 8
+      },
+      "no_cache": {
+        "first_token_latency_ms": 86.91158100009488,
+        "next_token_latency_ms": 91.86154128571745,
+        "tokens_per_second": 10.885948417626638,
+        "peak_vram_bytes": 0,
+        "generated_tokens": 8
+      },
+      "speedup_tokens_per_second": 1.1285786381662586
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 from torch import nn
 
 from src.models.attention import CausalSelfAttention
+from src.inference.kv_cache import KVCache
 from src.models.rmsnorm import RMSNorm
 
 
@@ -20,6 +21,8 @@ class TransformerBlock(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, x):
-        x = x + self.attention(self.attn_norm(x))
+    def forward(self, x, *, cache: KVCache | None = None,
+                layer_idx: int = 0, position_offset: int = 0):
+        x = x + self.attention(self.attn_norm(x), cache=cache,
+                               layer_idx=layer_idx, position_offset=position_offset)
         return x + self.feed_forward(self.ffn_norm(x))
