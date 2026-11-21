@@ -75,3 +75,16 @@ def test_legacy_dense_config_defaults_to_dense():
                                     "dropout": 0.0})
     assert config.model_type == "dense"
     assert GPT(config).parameter_count() > 0
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_moe_autocast_output_dtype_and_gradients(dtype):
+    moe = Top2MoE(8, 16, n_experts=4, top_k=2)
+    x = torch.randn(2, 5, 8, requires_grad=True)
+    with torch.autocast("cpu", dtype=dtype):
+        output, auxiliary_loss = moe(x)
+        loss = output.float().square().mean() + auxiliary_loss
+    loss.backward()
+    assert output.dtype == dtype
+    assert torch.isfinite(output).all()
+    assert torch.isfinite(moe.router.weight.grad).all()

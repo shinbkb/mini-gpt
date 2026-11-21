@@ -42,7 +42,10 @@ class Top2MoE(nn.Module):
         probabilities = F.softmax(self.router(flat).float(), dim=-1)
         top_probabilities, top_indices = probabilities.topk(self.top_k, dim=-1)
         top_weights = top_probabilities / top_probabilities.sum(dim=-1, keepdim=True).clamp_min(1e-9)
-        output = torch.zeros_like(flat)
+        # Expert Linear layers may autocast to fp16/bf16 while router math is
+        # deliberately fp32. Aggregate in the activation dtype for index_add_.
+        output = torch.zeros_like(flat, dtype=torch.get_autocast_dtype(flat.device.type)
+                                  if torch.is_autocast_enabled(flat.device.type) else flat.dtype)
         route_counts = torch.bincount(top_indices.reshape(-1), minlength=self.n_experts)
         for expert_idx, expert in enumerate(self.experts):
             token_idx, route_slot = torch.where(top_indices == expert_idx)

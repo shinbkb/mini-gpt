@@ -187,9 +187,14 @@ def train(config_path: str | Path, *, train_tokens_path: str | Path | None = Non
             train_loss_value += loss.detach().item()
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+        old_scale = scaler.get_scale()
         scaler.step(optimizer)
         scaler.update()
-        scheduler.step()
+        new_scale = scaler.get_scale()
+        # GradScaler lowers the scale when it skipped optimizer.step() due to
+        # non-finite fp16 gradients; do not advance LR schedule in that case.
+        if new_scale >= old_scale:
+            scheduler.step()
         training_seconds += time.perf_counter() - step_started
 
         completed = step + 1
