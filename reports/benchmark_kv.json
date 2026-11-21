@@ -11,72 +11,83 @@
     "tie_weights": true
   },
   "seed": 42,
-  "warmup": 1,
-  "repeats": 3,
+  "warmup": 2,
+  "repeats": 5,
   "first_token_latency_definition": "prompt prefill plus first next-token prediction",
   "next_token_latency_definition": "decode-loop duration per subsequent generated token, excluding prefill and first token",
   "environment": {
-    "python": "3.14.4",
-    "platform": "Linux-7.0.0-1006-nvidia-x86_64-with-glibc2.43",
+    "python": "3.13.16",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
     "libraries": {
-      "torch": "2.15.0+cpu",
-      "pytest": "9.2.0",
+      "torch": "2.11.0+cu130",
+      "pytest": "8.4.2",
       "PyYAML": "6.0.3"
     },
     "seed": 42,
-    "device": "cpu",
-    "cuda_available": false,
-    "cuda_build_version": null,
-    "gpu_devices": []
+    "device": "cuda",
+    "cuda_available": true,
+    "cuda_build_version": "13.0",
+    "gpu_devices": [
+      {
+        "index": 0,
+        "name": "Tesla T4",
+        "total_vram_bytes": 15636037632
+      },
+      {
+        "index": 1,
+        "name": "Tesla T4",
+        "total_vram_bytes": 15636037632
+      }
+    ]
   },
   "results": [
     {
       "context_length": 128,
-      "precision": "fp32",
-      "device": "cpu",
+      "precision": "fp16",
+      "device": "cuda",
       "skipped_contexts": [
         1024,
         2048
       ],
       "cache": {
-        "first_token_latency_ms": 22.471400999620528,
-        "next_token_latency_ms": 7.019608999988642,
-        "tokens_per_second": 142.45807708116195,
-        "peak_vram_bytes": 0,
-        "generated_tokens": 8
+        "first_token_latency_ms": 7.602160000033109,
+        "next_token_latency_ms": 7.357718380952909,
+        "tokens_per_second": 135.91169819556052,
+        "peak_vram_bytes": 241115136,
+        "generated_tokens": 64
       },
       "no_cache": {
-        "first_token_latency_ms": 25.49713899998096,
-        "next_token_latency_ms": 33.85855999996628,
-        "tokens_per_second": 29.534628761559734,
-        "peak_vram_bytes": 0,
-        "generated_tokens": 8
+        "first_token_latency_ms": 7.679924000001392,
+        "next_token_latency_ms": 7.539833904761256,
+        "tokens_per_second": 132.62891631717773,
+        "peak_vram_bytes": 243284480,
+        "generated_tokens": 64
       },
-      "speedup_tokens_per_second": 4.823425350332343
+      "speedup_tokens_per_second": 1.0247516301085664
     },
     {
       "context_length": 512,
-      "precision": "fp32",
-      "device": "cpu",
+      "precision": "fp16",
+      "device": "cuda",
       "skipped_contexts": [
         1024,
         2048
       ],
       "cache": {
-        "first_token_latency_ms": 80.51088000001982,
-        "next_token_latency_ms": 81.3957824285743,
-        "tokens_per_second": 12.28564884031321,
-        "peak_vram_bytes": 0,
-        "generated_tokens": 8
+        "first_token_latency_ms": 7.5269800000228315,
+        "next_token_latency_ms": 7.357652952381368,
+        "tokens_per_second": 135.91290680220808,
+        "peak_vram_bytes": 265649664,
+        "generated_tokens": 64
       },
       "no_cache": {
-        "first_token_latency_ms": 86.91158100009488,
-        "next_token_latency_ms": 91.86154128571745,
-        "tokens_per_second": 10.885948417626638,
-        "peak_vram_bytes": 0,
-        "generated_tokens": 8
+        "first_token_latency_ms": 7.407921000037732,
+        "next_token_latency_ms": 7.302289841270125,
+        "tokens_per_second": 136.9433454076735,
+        "peak_vram_bytes": 254574080,
+        "generated_tokens": 64
       },
-      "speedup_tokens_per_second": 1.1285786381662586
+      "speedup_tokens_per_second": 0.9924754386392574
     }
   ]
 }
