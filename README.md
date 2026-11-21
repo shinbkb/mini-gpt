@@ -13,7 +13,7 @@ Kế hoạch: [IMPLEMENTATION_PLAN_VI.md](IMPLEMENTATION_PLAN_VI.md).
 - `notebooks/02_dense_gpt.ipynb`: huấn luyện/generate Dense GPT trên Kaggle.
 - `experiments/`, `reports/`, `artifacts/`: thí nghiệm, báo cáo, output.
 
-MoE, long-context và INT8 là các milestone tiếp theo. M3 bổ sung KV cache và benchmark decode.
+M3 bổ sung KV cache và benchmark decode. M4 bổ sung MoE Top-2 và benchmark Dense/MoE.
 
 ## Ubuntu — cài đặt và kiểm tra CPU
 
@@ -85,6 +85,38 @@ Corpus nhỏ có thể không tạo đủ 8.000 token; `--require-full-vocab` s�
 CLI từ `src`. Sau khi push code M1, điền `COMMIT_SHA`; để tái lập dữ liệu online,
 điền `DATASET_REVISION`. Notebook không chứa lại thuật toán tokenizer.
 
+
+## M4 — Mixture of Experts
+
+`configs/moe.yaml` cấu hình 4 expert, Top-2 routing và auxiliary loss
+`0.01 * E * sum_i(f_i * P_i)`. `train.py` dùng cùng TinyStories token cache
+với Dense, huấn luyện MoE từ đầu, lưu `runs/moe/{best,last}.pt` và metrics có
+validation loss/PPL, throughput, VRAM, total/activated parameters, expert token
+counts, utilization và router entropy.
+
+CPU smoke (dùng token cache M1 và giảm số bước):
+
+```bash
+python train.py --config configs/moe.yaml --max-steps 2 --device cpu
+```
+
+So sánh Dense và MoE trên cùng validation split, context, batch, precision và
+device; benchmark ghi loss/PPL, validation tokens/s, peak VRAM, parameter counts
+và routing distribution:
+
+```bash
+python -m experiments.benchmark_moe \
+  --dense-checkpoint runs/dense/best.pt \
+  --moe-checkpoint runs/moe/best.pt \
+  --validation-tokens artifacts/validation_tokens.pt \
+  --precision fp16 --device auto --output reports/benchmark_moe.json
+```
+
+Notebook `04_moe.ipynb` điều phối Kaggle. Gắn M1 artifacts làm Input, đặt đúng
+đường dẫn trong cell đầu, cập nhật SHA đầy đủ sau khi push. Notebook huấn luyện
+Dense baseline và MoE từ đầu với cùng số bước × batch × context × gradient
+accumulation, sau đó benchmark và Save Version; không kết luận MoE tốt hơn Dense
+nếu số liệu không ủng hộ.
 
 ## M2 — Dense GPT
 

@@ -22,6 +22,10 @@ class GPTConfig:
     d_ff: int = 1536
     dropout: float = 0.1
     tie_weights: bool = True
+    model_type: str = "dense"
+    n_experts: int = 0
+    top_k: int = 2
+    auxiliary_loss_coefficient: float = 0.01
 
     def __post_init__(self):
         if min(self.vocab_size, self.block_size, self.n_layers, self.d_model,
@@ -33,10 +37,19 @@ class GPTConfig:
             raise ValueError("RoPE requires an even head dimension")
         if not 0 <= self.dropout < 1:
             raise ValueError("dropout must be in [0, 1)")
+        if self.model_type not in {"dense", "moe"}:
+            raise ValueError("model_type must be 'dense' or 'moe'")
+        if self.model_type == "moe" and (self.n_experts < 2 or not 1 <= self.top_k <= self.n_experts):
+            raise ValueError("MoE requires n_experts >= 2 and 1 <= top_k <= n_experts")
+        if self.auxiliary_loss_coefficient < 0:
+            raise ValueError("auxiliary_loss_coefficient must be nonnegative")
 
     @classmethod
     def from_mapping(cls, config: dict) -> "GPTConfig":
-        return cls(**{key: config[key] for key in asdict(cls()).keys() if key in config})
+        values = {key: config[key] for key in asdict(cls()).keys() if key in config}
+        if config.get("type") == "moe":
+            values.setdefault("model_type", "moe")
+        return cls(**values)
 
 
 class GPT(nn.Module):
@@ -47,7 +60,10 @@ class GPT(nn.Module):
         self.token_embedding = nn.Embedding(config.vocab_size, config.d_model)
         self.embedding_dropout = nn.Dropout(config.dropout)
         self.blocks = nn.ModuleList([
-            TransformerBlock(config.d_model, config.n_heads, config.d_ff, config.dropout)
+            TransformerBlock(config.d_model, config.n_heads, config.d_ff, config.dropout,
+                             n_experts=config.n_experts if config.model_type == "moe" else 0,
+                             top_k=config.top_k,
+                             auxiliary_loss_coefficient=config.auxiliary_loss_coefficient)
             for _ in range(config.n_layers)
         ])
         self.final_norm = RMSNorm(config.d_model)
@@ -64,7 +80,7 @@ class GPT(nn.Module):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, input_ids: torch.Tensor, *, use_cache: bool = False,
-                cache: KVCache | None = None) -> torch.Tensor | tuple[torch.Tensor, KVCache]:
+                cache: KVCache | None = None, return_aux_loss: bool = False):
         if input_ids.ndim != 2 or input_ids.dtype != torch.long:
             raise ValueError("input_ids must be a rank-2 torch.long tensor")
         if input_ids.shape[1] == 0 or input_ids.shape[1] > self.config.block_size:
@@ -75,15 +91,29 @@ class GPT(nn.Module):
             raise ValueError("cached sequence length exceeds block_size")
         position_offset = len(cache) if cache is not None else 0
         x = self.embedding_dropout(self.token_embedding(input_ids))
+        auxiliary_losses = []
         for layer_idx, block in enumerate(self.blocks):
-            x = block(x, cache=cache, layer_idx=layer_idx,
-                      position_offset=position_offset)
+            x, auxiliary_loss = block(x, cache=cache, layer_idx=layer_idx,
+                                      position_offset=position_offset)
+            auxiliary_losses.append(auxiliary_loss)
         logits = self.lm_head(self.final_norm(x))
+        aux_loss = torch.stack(auxiliary_losses).sum() if auxiliary_losses else logits.new_zeros(())
+        if return_aux_loss:
+            return logits, aux_loss
         return (logits, cache) if use_cache else logits
 
     def parameter_count(self) -> int:
         """Count unique trainable parameters (tied embedding/head counted once)."""
         return sum(parameter.numel() for parameter in self.parameters() if parameter.requires_grad)
+
+    def activated_parameter_count(self) -> int:
+        """Estimate parameters used per token; top-k expert FFNs are active."""
+        total = self.parameter_count()
+        if self.config.model_type != "moe":
+            return total
+        expert_total = sum(p.numel() for block in self.blocks
+                           for p in block.feed_forward.experts.parameters())
+        return total - expert_total + expert_total * self.config.top_k // self.config.n_experts
 
     @torch.no_grad()
     def generate(self, input_ids: torch.Tensor, max_new_tokens: int, *,

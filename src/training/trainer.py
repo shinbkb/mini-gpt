@@ -1,4 +1,4 @@
-"""Dense GPT trainer with validation, mixed precision and resumable checkpoints."""
+"""Dense/MoE GPT trainer with validation and resumable checkpoints."""
 from __future__ import annotations
 
 from contextlib import nullcontext
@@ -93,7 +93,7 @@ def train(config_path: str | Path, *, train_tokens_path: str | Path | None = Non
           validation_tokens_path: str | Path | None = None, output_dir: str | Path | None = None,
           max_steps: int | None = None, device_name: str = "auto",
           resume: str | Path | None = None, overfit_batch: bool = False) -> dict:
-    """Train Dense GPT. ``overfit_batch`` repeatedly trains on one sampled batch."""
+    """Train Dense or MoE GPT. ``overfit_batch`` repeats one sampled batch."""
     config_path = Path(config_path)
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or not isinstance(raw.get("model"), dict):
@@ -180,8 +180,9 @@ def train(config_path: str | Path, *, train_tokens_path: str | Path | None = Non
         for _ in range(grad_accum):
             x, y = fixed_batch if fixed_batch is not None else _batch(train_tokens, batch_size, model_config.block_size, device)
             with _autocast(device, precision):
-                logits = model(x)
-                loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), y.reshape(-1)) / grad_accum
+                logits, auxiliary_loss = model(x, return_aux_loss=True)
+                language_loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), y.reshape(-1))
+                loss = (language_loss + auxiliary_loss) / grad_accum
             scaler.scale(loss).backward()
             train_loss_value += loss.detach().item()
         scaler.unscale_(optimizer)
@@ -197,12 +198,26 @@ def train(config_path: str | Path, *, train_tokens_path: str | Path | None = Non
                                      eval_batches=eval_batches, device=device, seed=seed + completed)
             last_eval = val_loss
             elapsed = max(training_seconds, 1e-9)
+            routing = [block.feed_forward.last_routing_stats
+                       for block in model.blocks
+                       if hasattr(block.feed_forward, "last_routing_stats") and block.feed_forward.last_routing_stats]
+            routing_summary = {}
+            if routing:
+                routing_summary = {
+                    "expert_token_counts": torch.stack([item["token_counts"].float() for item in routing]).sum(0).cpu().tolist(),
+                    "mean_expert_utilization": torch.stack([item["expert_utilization"] for item in routing]).mean().item(),
+                    "mean_router_entropy": torch.stack([item["router_entropy"] for item in routing]).mean().item(),
+                    "auxiliary_loss": float(auxiliary_loss.detach().item()),
+                }
             record = {"step": completed, "train_loss": train_loss_value,
                       "val_loss": val_loss, "val_perplexity": _ppl(val_loss),
                       "tokens_per_second": completed * batch_size * model_config.block_size * grad_accum / elapsed,
                       "training_seconds": training_seconds,
                       "learning_rate": scheduler.get_last_lr()[0],
-                      "peak_vram_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else 0}
+                      "peak_vram_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else 0,
+                      "parameters_total": model.parameter_count(),
+                      "parameters_activated": model.activated_parameter_count(),
+                      **routing_summary}
             with metrics_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(record) + "\n")
             print(json.dumps(record), flush=True)
@@ -214,4 +229,6 @@ def train(config_path: str | Path, *, train_tokens_path: str | Path | None = Non
                 shutil.copy2(destination / "last.pt", destination / "best.pt")
     return {"output_dir": str(destination), "step": steps, "val_loss": last_eval,
             "val_perplexity": _ppl(last_eval) if last_eval is not None else None,
-            "parameters": model.parameter_count(), "device": str(device), "precision": precision}
+            "parameters": model.parameter_count(),
+            "activated_parameters": model.activated_parameter_count(),
+            "device": str(device), "precision": precision}
