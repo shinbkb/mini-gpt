@@ -98,7 +98,8 @@ def main() -> None:
     parser.add_argument("--dense-training-metrics")
     parser.add_argument("--moe-training-metrics")
     parser.add_argument("--precision", choices=("fp32", "fp16", "bf16"), default="fp16")
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--device", default="auto",
+                        help="auto, cpu, cuda, or an indexed device such as cuda:0")
     parser.add_argument("--output", default="reports/benchmark_moe.json")
     args = parser.parse_args()
     if min(args.batch_size, args.batches, args.repeats) < 1:

@@ -12,7 +12,8 @@ def main() -> None:
     parser.add_argument("--validation-tokens")
     parser.add_argument("--output-dir")
     parser.add_argument("--max-steps", type=int)
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--device", default="auto",
+                        help="auto, cpu, cuda, or an indexed device such as cuda:0")
     parser.add_argument("--resume")
     parser.add_argument("--overfit-batch", action="store_true")
     args = parser.parse_args()
